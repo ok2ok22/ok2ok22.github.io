@@ -2,6 +2,49 @@
 
 # 2FA Live Code 🔐
 
+A lightweight, front-end-only, and extremely secure online 2FA (TOTP) authenticator web app. 
+
+## 📸 Preview
+
+![2FA Live Code Interface](screenshot.png)
+
+## ✨ Features
+
+- 🔒 **100% Client-Side**: All calculations are done locally in your browser. Your secret keys are **never** sent to any server.
+- ⚡ **Real-time Generation**: Standard TOTP algorithm, automatically refreshing every 30 seconds.
+- 📋 **One-Click Copy**: Instantly copy the 6-digit verification code to your clipboard.
+- 📷 **QR Code Scanner**: Upload a QR code image or simply paste your secret key.
+- 💾 **Local Cache**: Automatically saves your recently used keys in your browser's LocalStorage for quick access.
+- 🎨 **Modern UI**: Dark theme with glowing progress bars and a sleek geek aesthetic.
+
+## 🚀 How to Use
+
+1. Visit the live demo: [https://your-username.github.io/](https://your-username.github.io/)
+2. Enter your 2FA secret key (e.g., `JBSWY3DPEHPK3PXP`) on the left panel, or click **"Scan QR"** to upload an image.
+3. The active token will be generated on the right panel with a countdown timer.
+4. Click **"Copy Code"** to copy the 6-digit code.
+
+## 🔒 Privacy & Security
+
+- **No Backend**: This project requires no server-side logic. Everything runs in your browser.
+- **Local Storage**: Your keys and codes are processed entirely in memory. The "Recent Keys" are cached securely using your browser's `localStorage`. 
+- **Shared Devices**: If you are using a public or shared computer, please click the **"Clear"** button next to "Recent Keys" to wipe your local cache before leaving.
+
+## 🛠️ Local Deployment / Development
+
+This is a single-file HTML project. You can simply clone the repository and double-click `index.html` to open it in your browser. 
+
+*Note: Some browsers may restrict the Web Crypto API (used for generating TOTP) when running via the `file://` protocol. For the best experience, use a local development server (like VS Code's Live Server) or deploy it via GitHub Pages (which provides HTTPS).*
+
+---
+
+*Disclaimer: This tool is for personal use. Please keep your 2FA secret keys safe and never share them with anyone.*
+
+
+
+
+# 2FA Live Code 🔐
+
 一个纯前端、极简风格的 2FA (TOTP) 在线验证码生成工具。
 
 ## 📸 界面预览
