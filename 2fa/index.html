@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2FA Live Code</title>
+    <!-- 引入 jsQR 用于扫描二维码图片 -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+        :root {
+            --bg-color: #0b0d14;
+            --panel-bg: #171924;
+            --panel-border: #2a2d3e;
+            --text-main: #ffffff;
+            --text-muted: #8b92a5;
+            --cyan-glow: #00e5ff;
+            --purple-glow: #8a2be2;
+            --button-bg: #222534;
+            --button-hover: #2f3347;
+            --input-bg: #0b0c13;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 顶部导航栏 */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--cyan-glow), var(--purple-glow));
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            color: white;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .nav-links span {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .nav-links span:hover {
+            color: var(--text-main);
+        }
+
+        .help-icon {
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--text-muted);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        /* 主容器 */
+        main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .app-container {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            display: flex;
+            width: 100%;
+            max-width: 1000px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        /* 左侧面板 - 密钥输入 */
+        .left-panel {
+            flex: 1;
+            padding: 40px;
+            border-right: 1px solid var(--panel-border);
+        }
+
+        .section-title {
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            color: var(--cyan-glow);
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .input-wrapper {
+            position: relative;
+            background-color: var(--input-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 15px;
+            height: 150px;
+            margin-bottom: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+        }
+
+        .clear-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .clear-btn:hover {
+            color: var(--text-main);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            background-color: var(--button-bg);
+            color: var(--text-main);
+            border: 1px solid var(--panel-border);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        button:hover {
+            background-color: var(--button-hover);
+        }
+
+        .scan-btn-group {
+            display: flex;
+            flex: 1;
+            gap: 5px;
+        }
+
+        .scan-btn-group button:first-child {
+            flex: 3;
+        }
+
+        .scan-btn-group button:last-child {
+            flex: 1;
+            border-left: none;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+        .scan-btn-group button:first-child {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        /* 隐藏的文件上传输入 */
+        #file-upload {
+            display: none;
+        }
+
+        /* 右侧面板 - 验证码显示 */
+        .right-panel {
+            flex: 1;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .active-token-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .active-token-header .section-title {
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .time-badge {
+            background-color: rgba(0, 229, 255, 0.1);
+            color: var(--cyan-glow);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .time-badge::before {
+            content: '';
+            display: block;
+            width: 6px;
+            height: 6px;
+            background-color: var(--cyan-glow);
+            border-radius: 50%;
+        }
+
+        /* 进度条 */
+        .progress-container {
+            margin-bottom: 20px;
+            position: relative;
+            height: 12px;
+            background: repeating-linear-gradient(
+                90deg,
+                #1a1c26,
+                #1a1c26 4px,
+                transparent 4px,
+                transparent 8px
+            );
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--purple-glow), var(--cyan-glow));
+            width: 100%;
+            transition: width 1s linear;
+            border-radius: 4px;
+        }
+        
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: -15px;
+            margin-bottom: 20px;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 1px;
+        }
+
+        /* 验证码显示区 */
+        .code-display {
+            background-color: var(--input-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .code-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            letter-spacing: 5px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        .code-text span {
+            color: #a0aec0;
+        }
+
+        /* 复制按钮 */
+        .copy-btn {
+            background: linear-gradient(90deg, #00d2ff, #7000ff);
+            border: none;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(112, 0, 255, 0.3);
+        }
+
+        .copy-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        /* 安全提示框 */
+        .info-box {
+            background-color: transparent;
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            gap: 12px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .info-box svg {
+            color: var(--cyan-glow);
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+        }
+
+        /* 最近使用 */
+        .recent-section {
+            margin-top: auto;
+        }
+
+        .recent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .clear-history {
+            color: var(--cyan-glow);
+            cursor: pointer;
+            text-transform: none;
+        }
+        
+        .clear-history:hover {
+            text-decoration: underline;
+        }
+
+        .recent-item {
+            background-color: var(--input-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .recent-key-name {
+            color: var(--purple-glow);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .recent-key-name svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .recent-code {
+            color: var(--cyan-glow);
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+
+        /* 隐藏 toast 提示 */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel-bg);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--cyan-glow);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        #toast.show {
+            opacity: 1;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <div class="logo-icon">#</div>
+            2FA Live Code
+        </div>
+        <div class="nav-links">
+            <span>How it works</span>
+            <span>Features</span>
+            <span>Privacy</span>
+        </div>
+        <div class="help-icon">?</div>
+    </header>
+
+    <main>
+        <div class="app-container">
+            <!-- 左侧输入 -->
+            <div class="left-panel">
+                <div class="section-title">Authentication Secret Key</div>
+                <div class="input-wrapper">
+                    <textarea id="secret-key" placeholder="Enter your secret key here (e.g. JBSWY3DPEHPK3PXP)..." spellcheck="false"></textarea>
+                    <button class="clear-btn" id="clear-btn" title="Clear">&times;</button>
+                </div>
+                <div class="button-group">
+                    <button id="paste-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                        Paste Key
+                    </button>
+                    <div class="scan-btn-group">
+                        <button id="scan-btn" onclick="document.getElementById('file-upload').click()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                            Scan QR
+                        </button>
+                        <button title="Upload QR Image" onclick="document.getElementById('file-upload').click()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        </button>
+                    </div>
+                    <input type="file" id="file-upload" accept="image/*">
+                </div>
+            </div>
+
+            <!-- 右侧输出 -->
+            <div class="right-panel">
+                <div class="active-token-header">
+                    <div class="section-title">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        Active Token
+                    </div>
+                    <div class="time-badge" id="time-badge">30s</div>
+                </div>
+
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div class="progress-labels">
+                    <span>SYS.BUFFER.01</span>
+                    <span>SYNC_OK</span>
+                    <span>0x1E</span>
+                </div>
+
+                <div class="code-display">
+                    <div class="code-text" id="token-display">--- ---</div>
+                </div>
+
+                <button class="copy-btn" id="copy-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    Copy Code
+                </button>
+
+                <div class="info-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    <div>
+                        Your keys are processed entirely within your web browser. No data is ever sent to our servers. To verify, you can disconnect from the internet after loading this page.
+                    </div>
+                </div>
+
+                <div class="recent-section">
+                    <div class="recent-header">
+                        <span>Recent Keys (Local Cache)</span>
+                        <span class="clear-history" id="clear-history-btn">Clear</span>
+                    </div>
+                    <div id="recent-list">
+                        <!-- 动态生成历史记录 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast">Copied to clipboard!</div>
+
+    <script>
+        // --- 核心逻辑 ---
+
+        // UI 元素引用
+        const secretKeyInput = document.getElementById('secret-key');
+        const tokenDisplay = document.getElementById('token-display');
+        const progressBar = document.getElementById('progress-bar');
+        const timeBadge = document.getElementById('time-badge');
+        const clearBtn = document.getElementById('clear-btn');
+        const pasteBtn = document.getElementById('paste-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const recentList = document.getElementById('recent-list');
+        const clearHistoryBtn = document.getElementById('clear-history-btn');
+        const fileUpload = document.getElementById('file-upload');
+        const toast = document.getElementById('toast');
+
+        let currentSecret = '';
+        let timerInterval = null;
+        let currentToken = '';
+
+        // Base32 解码器
+        function base32ToBuf(base32) {
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+            let bits = 0;
+            let value = 0;
+            let index = 0;
+            const buffer = new Uint8Array(Math.floor(base32.length * 5 / 8));
+
+            for (let i = 0; i < base32.length; i++) {
+                const val = alphabet.indexOf(base32.charAt(i).toUpperCase());
+                if (val === -1) continue; // 忽略非法字符如空格
+                value = (value << 5) | val;
+                bits += 5;
+                if (bits >= 8) {
+                    buffer[index++] = (value >>> (bits - 8)) & 255;
+                    bits -= 8;
+                }
+            }
+            return buffer;
+        }
+
+        // 生成 TOTP (基于时间的动态口令)
+        async function generateTOTP(secret, period = 30) {
+            try {
+                const key = base32ToBuf(secret.replace(/\s/g, ''));
+                if (key.length === 0) throw new Error("Invalid Key");
+
+                const epoch = Math.round(new Date().getTime() / 1000.0);
+                const time = Math.floor(epoch / period);
+                
+                // 将时间戳转换为 8 字节 ArrayBuffer
+                const timeBuf = new ArrayBuffer(8);
+                const timeView = new DataView(timeBuf);
+                timeView.setUint32(4, time, false);
+
+                // 使用 Web Crypto API 进行 HMAC-SHA1 签名
+                const cryptoKey = await crypto.subtle.importKey(
+                    'raw', key, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
+                );
+                const signature = await crypto.subtle.sign('HMAC', cryptoKey, timeBuf);
+                const hash = new Uint8Array(signature);
+
+                // 动态截断 (Dynamic Truncation)
+                const offset = hash[hash.length - 1] & 0xf;
+                const binary =
+                    ((hash[offset] & 0x7f) << 24) |
+                    ((hash[offset + 1] & 0xff) << 16) |
+                    ((hash[offset + 2] & 0xff) << 8) |
+                    (hash[offset + 3] & 0xff);
+
+                const otp = binary % 1000000;
+                return otp.toString().padStart(6, '0');
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // 格式化验证码显示 (355 537)
+        function formatToken(token) {
+            if (!token || token.length !== 6) return '--- ---';
+            return `${token.substring(0, 3)} ${token.substring(3)}`;
+        }
+
+        // 更新 UI 界面
+        async function updateUI() {
+            const epoch = Math.round(new Date().getTime() / 1000.0);
+            const remaining = 30 - (epoch % 30);
+            
+            // 更新进度条和时间标识
+            const progressPercent = (remaining / 30) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+            timeBadge.textContent = `${remaining}s`;
+
+            // 颜色渐变效果：时间越少越红 (可选，这里按原图保持青色)
+            if (remaining <= 5) {
+                progressBar.style.background = 'linear-gradient(90deg, #ff4d4d, #f9cb28)';
+            } else {
+                progressBar.style.background = 'linear-gradient(90deg, var(--purple-glow), var(--cyan-glow))';
+            }
+
+            // 当秒数为 30 时（即进入新周期），重新生成 Token
+            if (remaining === 30 && currentSecret) {
+                const newToken = await generateTOTP(currentSecret);
+                if (newToken !== currentToken) {
+                    currentToken = newToken;
+                    tokenDisplay.textContent = formatToken(currentToken);
+                    updateRecentCache(currentSecret, currentToken);
+                }
+            }
+        }
+
+        // 启动定时器
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            updateUI();
+            timerInterval = setInterval(updateUI, 1000);
+        }
+
+        // 处理输入的密钥
+        async function handleSecretChange() {
+            const secret = secretKeyInput.value.trim();
+            if (secret.length > 5) {
+                currentSecret = secret;
+                const token = await generateTOTP(currentSecret);
+                if (token) {
+                    currentToken = token;
+                    tokenDisplay.textContent = formatToken(currentToken);
+                    saveToLocal(secret, token);
+                } else {
+                    tokenDisplay.textContent = 'Invalid Key';
+                }
+            } else {
+                currentSecret = '';
+                tokenDisplay.textContent = '--- ---';
+            }
+            startTimer();
+        }
+
+        // 防抖处理输入
+        let debounceTimer;
+        secretKeyInput.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(handleSecretChange, 500);
+        });
+
+        // 清空按钮
+        clearBtn.addEventListener('click', () => {
+            secretKeyInput.value = '';
+            handleSecretChange();
+        });
+
+        // 粘贴按钮
+        pasteBtn.addEventListener('click', async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                secretKeyInput.value = text;
+                handleSecretChange();
+            } catch (err) {
+                showToast('Failed to read clipboard');
+            }
+        });
+
+        // 复制验证码
+        copyBtn.addEventListener('click', () => {
+            if (currentToken && currentToken !== 'Invalid Key') {
+                navigator.clipboard.writeText(currentToken).then(() => {
+                    showToast('Copied: ' + currentToken);
+                });
+            }
+        });
+
+        // Toast 提示
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // 本地缓存逻辑 (最近使用)
+        function saveToLocal(secret, token) {
+            if (!secret) return;
+            let history = JSON.parse(localStorage.getItem('2fa_history') || '[]');
+            
+            // 移除已存在的相同密钥
+            history = history.filter(item => item.secret !== secret);
+            
+            // 添加到最前面
+            history.unshift({
+                secret: secret,
+                masked: secret.substring(0, 4) + ' .... ' + secret.substring(secret.length - 4),
+                token: token
+            });
+
+            // 只保留最近 3 条
+            history = history.slice(0, 3);
+            localStorage.setItem('2fa_history', JSON.stringify(history));
+            renderHistory();
+        }
+
+        function updateRecentCache(secret, token) {
+             let history = JSON.parse(localStorage.getItem('2fa_history') || '[]');
+             let index = history.findIndex(item => item.secret === secret);
+             if(index !== -1){
+                 history[index].token = token;
+                 localStorage.setItem('2fa_history', JSON.stringify(history));
+                 renderHistory();
+             }
+        }
+
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem('2fa_history') || '[]');
+            recentList.innerHTML = '';
+            
+            if (history.length === 0) {
+                recentList.innerHTML = `<div style="font-size: 0.8rem; color: var(--text-muted);">No recent keys</div>`;
+                return;
+            }
+
+            history.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'recent-item';
+                div.style.marginBottom = '8px';
+                div.style.cursor = 'pointer';
+                div.innerHTML = `
+                    <div class="recent-key-name">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        ${item.masked}
+                    </div>
+                    <div class="recent-code">${formatToken(item.token)}</div>
+                `;
+                // 点击历史记录直接填入
+                div.addEventListener('click', () => {
+                    secretKeyInput.value = item.secret;
+                    handleSecretChange();
+                });
+                recentList.appendChild(div);
+            });
+        }
+
+        // 清除历史
+        clearHistoryBtn.addEventListener('click', () => {
+            localStorage.removeItem('2fa_history');
+            renderHistory();
+        });
+
+        // 二维码图片解析
+        fileUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    context.drawImage(img, 0, 0, img.width, img.height);
+                    
+                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                    
+                    // 使用 jsQR 解析
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+                    
+                    if (code) {
+                        // 尝试从 URL 中提取 secret 参数
+                        const url = code.data;
+                        const match = url.match(/[?&]secret=([^&]+)/i);
+                        if (match && match[1]) {
+                            secretKeyInput.value = decodeURIComponent(match[1]);
+                            handleSecretChange();
+                            showToast('QR Code scanned successfully!');
+                        } else {
+                            // 如果直接是明文密钥
+                            secretKeyInput.value = url;
+                            handleSecretChange();
+                            showToast('QR Code scanned!');
+                        }
+                    } else {
+                        showToast('No valid QR code found in image');
+                    }
+                    // 清空 input 允许重复上传同个文件
+                    fileUpload.value = '';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // 初始化
+        function init() {
+            renderHistory();
+            // 如果本地有最近记录，自动填入第一条
+            const history = JSON.parse(localStorage.getItem('2fa_history') || '[]');
+            if (history.length > 0) {
+                secretKeyInput.value = history[0].secret;
+                handleSecretChange();
+            } else {
+                startTimer();
+            }
+        }
+
+        init();
+
+    </script>
+</body>
+</html>
